@@ -1,148 +1,252 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/session_provider.dart';
-import '../models/session_model.dart'; // For types
-import 'session_management_screen.dart';
-import 'revenue_analytics_screen.dart';
+import '../providers/theme_provider.dart';
+import 'main_layout.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Entrance Animation
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('TIBGS CAFE MANAGER'),
-        leading: const Icon(Icons.gamepad),
+        title: Text('TIBGS CAFE',
+            style: Theme.of(context).textTheme.displayMedium),
+        backgroundColor: Colors.transparent, // Glass effect header
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Theme.of(context).scaffoldBackgroundColor.withOpacity(0.9),
+                Colors.transparent,
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          Consumer<ThemeProvider>(
+            builder: (context, themeProvider, _) {
+              return IconButton(
+                icon: Icon(themeProvider.isDarkMode
+                    ? Icons.light_mode
+                    : Icons.dark_mode),
+                onPressed: () => themeProvider.toggleTheme(),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // REVENUE BOX (Clickable)
-            Material(
-              color: CardTheme.of(context).color,
-              borderRadius: BorderRadius.circular(16),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const RevenueAnalyticsScreen()),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    children: [
-                      Text(
-                        'TODAY\'S REVENUE',
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: Colors.white54,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      // Placeholder for live revenue (would need a Stream or FutureBuilder)
-                      Text(
-                        '₹ 0.00', // Dynamic later
-                        style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).primaryColor,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Tap for detailed analytics',
-                        style: TextStyle(fontSize: 12, color: Colors.white30),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 32),
-            
-            Text(
-              'SESSION CONTROLS',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
+      body: Container(
+        // Background with subtle gradient if needed, or rely on scaffold bg
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // DASHBOARD HEADER
+                _buildDashboardSummary(context),
+                const SizedBox(height: 32),
 
-            // PC SESSIONS CARD
-            Expanded(
-              child: _buildSessionCard(
-                context,
-                title: 'PC SESSIONS',
-                icon: Icons.monitor,
-                color: Colors.blueAccent,
-                onTap: () {
-                   Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SessionManagementScreen(type: DeviceType.pc)),
-                  );
-                },
-              ),
+                Text(
+                  'COMMAND CENTER',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        letterSpacing: 2,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                ),
+                const SizedBox(height: 20),
+
+                // SESSION CONTROL ROW
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildSessionCard(
+                        context,
+                        title: 'PC ZONE',
+                        subtitle: 'Manage High-End PCs',
+                        icon: Icons.computer,
+                        color: Theme.of(context).primaryColor,
+                        type: 'PC',
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildSessionCard(
+                        context,
+                        title: 'CONSOLE HUB',
+                        subtitle: 'PS5 & Xbox Stations',
+                        icon: Icons.gamepad,
+                        color: Theme.of(context).colorScheme.secondary,
+                        type: 'Console',
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            
-            const SizedBox(height: 16),
-            
-            // CONSOLE SESSIONS CARD
-            Expanded(
-              child: _buildSessionCard(
-                context,
-                title: 'CONSOLE SESSIONS',
-                icon: Icons.videogame_asset,
-                color: Colors.purpleAccent,
-                onTap: () {
-                   Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SessionManagementScreen(type: DeviceType.console)),
-                  );
-                },
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildSessionCard(BuildContext context, {required String title, required IconData icon, required Color color, required VoidCallback onTap}) {
+  Widget _buildDashboardSummary(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardTheme.color,
+        borderRadius: BorderRadius.circular(24),
+        border:
+            Border.all(color: Theme.of(context).primaryColor.withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).primaryColor.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          )
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('DAILY REVENUE',
+                      style: Theme.of(context).textTheme.bodyMedium),
+                  const SizedBox(height: 4),
+                  // Placeholder for now, can be connected to provider later
+                  Text('₹ 0.00',
+                      style: Theme.of(context).textTheme.displayLarge),
+                ],
+              ),
+              InkWell(
+                onTap: () {
+                  // Switch to Revenue Tab (Index 3)
+                  final mainState =
+                      context.findAncestorStateOfType<MainLayoutState>();
+                  mainState?.switchTab(3);
+                },
+                borderRadius: BorderRadius.circular(50),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.bar_chart,
+                      color: Theme.of(context).primaryColor),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          // Quick Stats Row
+          Row(
+            children: [
+              _buildQuickStat(context, 'Active PCs', Icons.desktop_windows,
+                  '0'), // To be connected
+              const SizedBox(width: 24),
+              _buildQuickStat(
+                  context, 'Active Consoles', Icons.videogame_asset, '0'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickStat(
+      BuildContext context, String label, IconData icon, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: Colors.grey),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(value,
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(label,
+                style: const TextStyle(fontSize: 10, color: Colors.grey)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSessionCard(BuildContext context,
+      {required String title,
+      required String subtitle,
+      required IconData icon,
+      required Color color,
+      required String type}) {
     return Material(
-      color: Theme.of(context).cardTheme.color,
-      borderRadius: BorderRadius.circular(20),
-      clipBehavior: Clip.antiAlias,
+      color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          // Switch Tab based on type
+          final mainState = context.findAncestorStateOfType<MainLayoutState>();
+          if (type == 'PC') {
+            mainState?.switchTab(1);
+          } else {
+            mainState?.switchTab(2);
+          }
+        },
+        borderRadius: BorderRadius.circular(20),
         child: Container(
+          height: 180,
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            border: Border.all(color: color.withOpacity(0.3), width: 1),
+            color: Theme.of(context).cardTheme.color,
             borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withOpacity(0.3)),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                color.withOpacity(0.1),
+                color.withOpacity(0.05),
                 Colors.transparent,
               ],
             ),
           ),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(icon, size: 48, color: color),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1,
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                child: Icon(icon, color: color, size: 32),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontSize: 18)),
+                  const SizedBox(height: 4),
+                  Text(subtitle,
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(fontSize: 12)),
+                ],
               ),
             ],
           ),

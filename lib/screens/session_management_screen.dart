@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/device_model.dart';
 import '../models/session_model.dart'; // For DeviceType consts
 import '../providers/session_provider.dart';
 import 'package:intl/intl.dart';
@@ -11,53 +12,131 @@ class SessionManagementScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Generate a list of devices (e.g., PC 1 - PC 10)
-    final deviceCount = type == DeviceType.pc ? 10 : 5; // Example counts
-    final devices = List.generate(deviceCount, (index) => '$type ${index + 1}');
-
     return Scaffold(
       appBar: AppBar(
-        title: Text('$type Management'),
+        title: Text('$type Management',
+            style: Theme.of(context).textTheme.displayMedium),
+        centerTitle: true,
       ),
-      body: GridView.builder(
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2, // 2 Columns
-          childAspectRatio: 0.8,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-        ),
-        itemCount: devices.length,
-        itemBuilder: (context, index) {
-          final deviceName = devices[index];
-          return _DeviceCard(deviceName: deviceName, deviceType: type);
+      body: Consumer<SessionProvider>(
+        builder: (context, provider, child) {
+          final devices = type == DeviceType.pc
+              ? provider.pcDevices
+              : provider.consoleDevices;
+
+          if (devices.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.devices_other,
+                      size: 64, color: Colors.grey.withOpacity(0.5)),
+                  const SizedBox(height: 16),
+                  Text('No devices added yet',
+                      style: Theme.of(context).textTheme.bodyLarge),
+                ],
+              ),
+            );
+          }
+
+          return GridView.builder(
+            padding: const EdgeInsets.all(16),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.75, // Taller cards for better spacing
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+            ),
+            itemCount: devices.length,
+            itemBuilder: (context, index) {
+              final device = devices[index];
+              return _DeviceCard(device: device);
+            },
+          );
         },
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddDeviceDialog(context),
+        backgroundColor: Theme.of(context).primaryColor,
+        icon: const Icon(Icons.add),
+        label: Text('ADD $type'),
+      ),
+    );
+  }
+
+  void _showAddDeviceDialog(BuildContext context) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Add New $type'),
+        content: TextField(
+          controller: controller,
+          decoration:
+              const InputDecoration(hintText: 'Device Name (e.g., PC 11)'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (controller.text.isNotEmpty) {
+                Provider.of<SessionProvider>(context, listen: false)
+                    .addDevice(controller.text, type);
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('ADD'),
+          ),
+        ],
       ),
     );
   }
 }
 
 class _DeviceCard extends StatelessWidget {
-  final String deviceName;
-  final String deviceType;
+  final Device device;
 
-  const _DeviceCard({required this.deviceName, required this.deviceType});
+  const _DeviceCard({required this.device});
 
   @override
   Widget build(BuildContext context) {
     return Consumer<SessionProvider>(
       builder: (context, provider, child) {
-        final session = provider.getSession(deviceName);
+        final session = provider.getSession(device.name);
         final isRunning = session != null;
+        final theme = Theme.of(context);
+        final primaryColor = theme.primaryColor;
 
-        return Card(
-          color: isRunning ? const Color(0xFF2C1810) : null, // Darker tint if active
-          shape: RoundedRectangleBorder(
+        return GestureDetector(
+          onLongPress: () => _showDeleteConfirmation(context, provider),
+          child: Container(
+            decoration: BoxDecoration(
+              color: theme.cardTheme.color,
               borderRadius: BorderRadius.circular(16),
-              side: isRunning 
-                  ? BorderSide(color: Theme.of(context).primaryColor, width: 2)
-                  : BorderSide.none),
-          child: Padding(
+              border: Border.all(
+                color: isRunning ? primaryColor : Colors.white10,
+                width: isRunning ? 2 : 1,
+              ),
+              boxShadow: isRunning
+                  ? [
+                      BoxShadow(
+                          color: primaryColor.withOpacity(0.3),
+                          blurRadius: 10,
+                          spreadRadius: 1)
+                    ]
+                  : [],
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isRunning
+                    ? [primaryColor.withOpacity(0.15), Colors.transparent]
+                    : [Colors.transparent, Colors.transparent],
+              ),
+            ),
             padding: const EdgeInsets.all(12.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -66,54 +145,78 @@ class _DeviceCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      deviceName,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    Expanded(
+                      child: Text(
+                        device.name,
+                        style:
+                            theme.textTheme.titleLarge?.copyWith(fontSize: 16),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     Icon(
                       isRunning ? Icons.timer : Icons.circle_outlined,
-                      color: isRunning ? Theme.of(context).primaryColor : Colors.grey,
-                      size: 20,
+                      color: isRunning ? primaryColor : Colors.grey,
+                      size: 18,
                     ),
                   ],
                 ),
-                
+
+                const Divider(height: 20, color: Colors.white10),
+
                 if (isRunning) ...[
                   // ACTIVE STATE
-                  const Divider(),
-                  _buildStatRow('Started:', DateFormat.jm().format(session.startTime)),
-                  const SizedBox(height: 8),
-                  
+                  _buildStatRow(
+                      'Started', DateFormat.jm().format(session.startTime)),
+                  const SizedBox(height: 4),
+                  _buildStatRow(
+                      'Cost', '₹ ${session.totalCost.toStringAsFixed(0)}'),
+
+                  const Spacer(),
                   // Live Timer
                   Text(
                     _formatDuration(session.durationMinutes),
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 2),
+                    style: theme.textTheme.displayMedium?.copyWith(
+                        fontSize: 28,
+                        color: primaryColor,
+                        shadows: [Shadow(color: primaryColor, blurRadius: 10)]),
                   ),
-                  
-                  const SizedBox(height: 8),
-                  Text(
-                    '₹ ${session.totalCost.toStringAsFixed(2)}',
-                    style: TextStyle(color: Theme.of(context).colorScheme.secondary, fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-
                   const Spacer(),
+
                   // CONTROLS
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _SmallButton(label: '+1H', onTap: () => provider.addTime(session.id!, 1)),
-                      _SmallButton(label: 'STOP', isDestructive: true, onTap: () => provider.stopSession(session.id!)),
+                      // Minimalist buttons
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline),
+                        onPressed: () => provider.addTime(session.id!, 1),
+                        tooltip: '+1 Hour',
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.stop_circle_outlined,
+                            color: Colors.redAccent),
+                        onPressed: () => _showStopConfirmation(
+                            context, provider, session.id!),
+                        tooltip: 'Stop Session',
+                      ),
                     ],
                   )
                 ] else ...[
                   // IDLE STATE
                   const Spacer(),
-                  const Icon(Icons.desktop_windows, size: 40, color: Colors.white24),
+                  Icon(Icons.power_settings_new,
+                      size: 40, color: Colors.white12),
                   const Spacer(),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () => provider.startSession(deviceName, deviceType),
+                      onPressed: () =>
+                          provider.startSession(device.name, device.type),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor.withOpacity(0.1),
+                        foregroundColor: primaryColor,
+                        side: BorderSide(color: primaryColor),
+                      ),
                       child: const Text('START'),
                     ),
                   ),
@@ -123,6 +226,56 @@ class _DeviceCard extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  void _showStopConfirmation(
+      BuildContext context, SessionProvider provider, int sessionId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Stop Session?'),
+        content: const Text(
+            'Are you sure you want to stop this session? Charging will stop immediately.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            onPressed: () {
+              provider.stopSession(sessionId);
+              Navigator.pop(context);
+            },
+            child: const Text('STOP'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context, SessionProvider provider) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Station?'),
+        content: Text('This will remove "${device.name}" permanently.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            onPressed: () {
+              provider.deleteDevice(device.id!);
+              Navigator.pop(context);
+            },
+            child: const Text('DELETE'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -136,41 +289,10 @@ class _DeviceCard extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        Text(value,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
       ],
-    );
-  }
-}
-
-class _SmallButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-  final bool isDestructive;
-
-  const _SmallButton({required this.label, required this.onTap, this.isDestructive = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isDestructive ? Colors.red.withOpacity(0.2) : Colors.white.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: isDestructive ? Colors.red : Colors.white24),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isDestructive ? Colors.red : Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
     );
   }
 }

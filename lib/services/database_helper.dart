@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/session_model.dart';
+import '../models/device_model.dart';
 import 'package:intl/intl.dart';
 
 class DatabaseHelper {
@@ -19,7 +20,40 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    // If upgrading, you might need onUpgrade. For now, simple version bump or recreate.
+    // Since we are adding a table, we can just bump version and handle it,
+    // OR since it's dev, just delete app data.
+    // Let's increment version to 2 and add onUpgrade logic just in case.
+    return await openDatabase(path,
+        version: 2, onCreate: _createDB, onUpgrade: _upgradeDB);
+  }
+
+  Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      const idType = 'INTEGER PRIMARY KEY AUTOINCREMENT';
+      const textType = 'TEXT NOT NULL';
+      await db.execute('''
+        CREATE TABLE devices (
+          id $idType,
+          name $textType,
+          type $textType
+        )
+      ''');
+      // Seed Data during upgrade if needed
+      await _seedDevices(db);
+    }
+  }
+
+  Future _seedDevices(Database db) async {
+    // Seed default devices
+    final batch = db.batch();
+    for (int i = 1; i <= 5; i++) {
+      batch.insert('devices', {'name': 'PC $i', 'type': 'PC'});
+    }
+    for (int i = 1; i <= 2; i++) {
+      batch.insert('devices', {'name': 'Console $i', 'type': 'Console'});
+    }
+    await batch.commit();
   }
 
   Future _createDB(Database db, int version) async {
@@ -39,6 +73,16 @@ CREATE TABLE sessions (
   durationMinutes $intType
   )
 ''');
+
+    await db.execute('''
+CREATE TABLE devices (
+  id $idType,
+  name $textType,
+  type $textType
+)
+''');
+
+    await _seedDevices(db);
   }
 
   Future<int> createSession(Session session) async {
@@ -101,5 +145,39 @@ CREATE TABLE sessions (
       weeklyData[date] = revenue;
     }
     return weeklyData;
+  }
+
+  Future<Map<DateTime, double>> getMonthlyRevenue() async {
+    final Map<DateTime, double> monthlyData = {};
+    final now = DateTime.now();
+
+    // Get last 30 days
+    for (int i = 29; i >= 0; i--) {
+      final date = now.subtract(Duration(days: i));
+      final revenue = await getDailyRevenue(date);
+      monthlyData[date] = revenue;
+    }
+    return monthlyData;
+  }
+
+  // Device Operations
+  Future<int> addDevice(Device device) async {
+    final db = await instance.database;
+    return await db.insert('devices', device.toMap());
+  }
+
+  Future<int> deleteDevice(int id) async {
+    final db = await instance.database;
+    return await db.delete(
+      'devices',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<List<Device>> getAllDevices() async {
+    final db = await instance.database;
+    final result = await db.query('devices', orderBy: 'name ASC');
+    return result.map((json) => Device.fromMap(json)).toList();
   }
 }
