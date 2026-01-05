@@ -26,9 +26,9 @@ class AppTheme {
       ),
       textTheme: GoogleFonts.interTextTheme(
         ThemeData.dark().textTheme.apply(
-          bodyColor: onBackground,
-          displayColor: onBackground,
-        ),
+              bodyColor: onBackground,
+              displayColor: onBackground,
+            ),
       ),
       cardTheme: CardTheme(
         color: surface,
