@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/session_provider.dart';
 import '../providers/theme_provider.dart';
 import 'main_layout.dart';
+import 'revenue_analytics_screen.dart';
+import 'session_management_screen.dart'; // Though not directly nav'd from here for session cards anymore as they redirect to tabs
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -97,6 +100,11 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildDashboardSummary(BuildContext context) {
+    // Get Daily Revenue asynchronously?
+    // Ideally Provider should hold this or we fetch it.
+    // For now we can assume analytics screen/provider fetches it.
+    // Let's use a FutureBuilder here if we want or just static for now as requested fix was counts.
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -125,7 +133,7 @@ class HomeScreen extends StatelessWidget {
                       style: Theme.of(context).textTheme.bodyMedium),
                   const SizedBox(height: 4),
                   // Placeholder for now, can be connected to provider later
-                  Text('₹ 0.00',
+                  Text('₹ ---', // Placeholder
                       style: Theme.of(context).textTheme.displayLarge),
                 ],
               ),
@@ -151,15 +159,17 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           // Quick Stats Row
-          Row(
-            children: [
-              _buildQuickStat(context, 'Active PCs', Icons.desktop_windows,
-                  '0'), // To be connected
-              const SizedBox(width: 24),
-              _buildQuickStat(
-                  context, 'Active Consoles', Icons.videogame_asset, '0'),
-            ],
-          ),
+          Consumer<SessionProvider>(builder: (context, session, _) {
+            return Row(
+              children: [
+                _buildQuickStat(context, 'Active PCs', Icons.desktop_windows,
+                    '${session.activePCCount}'),
+                const SizedBox(width: 24),
+                _buildQuickStat(context, 'Active Consoles',
+                    Icons.videogame_asset, '${session.activeConsoleCount}'),
+              ],
+            );
+          }),
         ],
       ),
     );

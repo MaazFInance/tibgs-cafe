@@ -1,4 +1,3 @@
-
 class DeviceType {
   static const String pc = 'PC';
   static const String console = 'Console';
@@ -12,7 +11,9 @@ class Session {
   DateTime? endTime;
   double totalCost;
   int durationMinutes; // Actual duration played
-  
+  int? targetDurationMinutes;
+  double? hourlyRate;
+
   Session({
     this.id,
     required this.deviceName,
@@ -21,6 +22,8 @@ class Session {
     this.endTime,
     this.totalCost = 0.0,
     this.durationMinutes = 0,
+    this.targetDurationMinutes,
+    this.hourlyRate,
   });
 
   // Convert to Map for SQLite
@@ -33,6 +36,8 @@ class Session {
       'endTime': endTime?.toIso8601String(),
       'totalCost': totalCost,
       'durationMinutes': durationMinutes,
+      'targetDurationMinutes': targetDurationMinutes,
+      'hourlyRate': hourlyRate,
     };
   }
 
@@ -46,6 +51,8 @@ class Session {
       endTime: map['endTime'] != null ? DateTime.parse(map['endTime']) : null,
       totalCost: map['totalCost'] ?? 0.0,
       durationMinutes: map['durationMinutes'] ?? 0,
+      targetDurationMinutes: map['targetDurationMinutes'],
+      hourlyRate: map['hourlyRate'],
     );
   }
 }

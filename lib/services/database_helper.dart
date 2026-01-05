@@ -25,7 +25,7 @@ class DatabaseHelper {
     // OR since it's dev, just delete app data.
     // Let's increment version to 2 and add onUpgrade logic just in case.
     return await openDatabase(path,
-        version: 2, onCreate: _createDB, onUpgrade: _upgradeDB);
+        version: 3, onCreate: _createDB, onUpgrade: _upgradeDB);
   }
 
   Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
@@ -41,6 +41,12 @@ class DatabaseHelper {
       ''');
       // Seed Data during upgrade if needed
       await _seedDevices(db);
+    }
+
+    if (oldVersion < 3) {
+      await db.execute(
+          'ALTER TABLE sessions ADD COLUMN targetDurationMinutes INTEGER');
+      await db.execute('ALTER TABLE sessions ADD COLUMN hourlyRate REAL');
     }
   }
 
@@ -70,7 +76,9 @@ CREATE TABLE sessions (
   startTime $textType,
   endTime TEXT,
   totalCost $realType,
-  durationMinutes $intType
+  durationMinutes $intType,
+  targetDurationMinutes INTEGER,
+  hourlyRate REAL
   )
 ''');
 

@@ -4,6 +4,7 @@ import 'constants/theme.dart';
 import 'providers/session_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/theme_provider.dart';
+import 'providers/settings_provider.dart';
 import 'screens/main_layout.dart';
 
 void main() {
@@ -19,8 +20,13 @@ class TibgsCafeApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => SessionProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
+        ChangeNotifierProxyProvider<SettingsProvider, SessionProvider>(
+          create: (_) => SessionProvider(
+              SettingsProvider()), // Initial empty, updated by update
+          update: (_, settings, session) => session!..updateSettings(settings),
+        ),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
